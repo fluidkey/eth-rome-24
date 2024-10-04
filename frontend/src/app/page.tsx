@@ -1,5 +1,4 @@
 "use client";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import axios from "axios";
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Raleway } from "next/font/google";
-
+import { usePrivy } from "@privy-io/react-auth";
 const raleway = Raleway({ subsets: ["latin"] });
 
 export default function Home() {
@@ -19,6 +18,8 @@ export default function Home() {
   const [addressValue, setAddressValue] = useState<string | null>();
   const [loading, setLoading] = useState<boolean>(false);
   const { address } = useAccount();
+  const { login, logout } = usePrivy();
+  console.log(address);
   const { data: userReservesData, refetch: refetchUserReservesData } = useReadAaveUiPoolDataProviderGetUserReservesData({
     args: ["0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb",
       depositAddress as `0x${string}`],
@@ -87,7 +88,16 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center px-4 py-4 sm:px-16">
       <div className="flex justify-between items-center w-full px-8 max-w-4xl">
         <h1 className={`text-2xl font-semibold ${raleway.className}`}>fluid.loan</h1>
-        <ConnectButton />
+        <div className="flex gap-2">
+          <Button onClick={() => {
+            console.log("login");
+            login();
+          }}>Login</Button>
+          <Button onClick={() => {
+            console.log("logout",address);
+            logout();
+          }}>Logout</Button>
+        </div>
       </div>
       <div className="flex flex-col justify-between items-center">
         <div className="flex justify-center flex-wrap w-full mt-8 sm:mt-24 gap-4">

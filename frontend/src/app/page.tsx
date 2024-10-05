@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Raleway } from "next/font/google";
 import { usePrivy } from "@privy-io/react-auth";
+import { useGetCustomerInfo, createNewCustomer } from "@/lib/api";
 const raleway = Raleway({ subsets: ["latin"] });
 
 export default function Home() {
@@ -16,11 +17,13 @@ export default function Home() {
   const [usdcBorrowed, setUsdcBorrowed] = useState<string>();
   const [depositAddress, setDepositAddress] = useState<string>();
   const [addressValue, setAddressValue] = useState<string | null>();
+  const [fullName, setFullName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [username, setUsername] = useState<string>('')
+  const [privyAuthToken, setPrivyAuthToken] = useState<string | null>(null);
   const { address } = useAccount();
-  const { login, logout, user } = usePrivy();
-  console.log(address);
+  const { login, logout, user, getAccessToken } = usePrivy();
   const { data: userReservesData, refetch: refetchUserReservesData } = useReadAaveUiPoolDataProviderGetUserReservesData({
     args: ["0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb",
       depositAddress as `0x${string}`],
@@ -32,6 +35,19 @@ export default function Home() {
     address: "0xf611aEb5013fD2c0511c9CD55c7dc5C1140741A6",
     args: [depositAddress as `0x${string}`],
   });
+  const { data: customerInfoData, isLoading: customerInfoIsLoading, error: customerInfoError } = useGetCustomerInfo({
+    privyAuthToken: privyAuthToken as string,
+  });
+
+  const getToken = async () => {
+    const token = await getAccessToken();
+    setPrivyAuthToken(token);
+  }
+
+  useEffect(() => {
+    getToken();
+  }, [user])
+
   // Call the refetch functions every 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -117,14 +133,20 @@ export default function Home() {
         <div className="flex justify-center flex-wrap w-full mt-8 sm:mt-24 gap-4">
           <Card className="sm:min-w-[40%] sm:w-[40%] min-w-[70%] relative flex flex-col justify-between">
             <CardHeader>
-              <CardTitle className="text-4xl text-primary">💎 Hold ETH</CardTitle>
+              <CardTitle className="text-4xl text-primary">💎 Hold ETH & BTC</CardTitle>
               <CardDescription>
-                Keep the ETH upside and optimize taxable events.
+                Keep the ETH & BTC upside and optimize taxable events.
               </CardDescription>
             </CardHeader>
-            <CardContent className="w-full flex flex-col justify-center items-center mt-5">
-              <p className="text-2xl sm:text-4xl text-primary">{ethCollateral} ETH</p>
-              <p className="text-lg text-primary mb-8">deposited</p>
+            <CardContent className="w-full flex flex-row justify-center gap-16 items-center mt-5">
+              <div className="flex flex-col items-center">
+                <p className="text-2xl sm:text-4xl text-primary">{ethCollateral} ETH</p>
+                <p className="text-lg text-primary mb-8">deposited</p>
+              </div>
+              <div className="flex flex-col items-center">
+                <p className="text-2xl sm:text-4xl text-primary">{ethCollateral} cbBTC</p>
+                <p className="text-lg text-primary mb-8">deposited</p>
+              </div>
             </CardContent>
           </Card>
           <Card className="sm:min-w-[40%] sm:w-[40%] min-w-[70%] relative flex flex-col justify-between">
@@ -135,17 +157,19 @@ export default function Home() {
                 vacation, car, or any other expense.
               </CardDescription>
             </CardHeader>
-            <CardContent className="w-full flex flex-col justify-center items-center mt-5">
+            <CardContent className="w-full flex flex-col justify-center items-center mt-5 h-max flex-grow">
               <p className="text-2xl sm:text-4xl text-primary">{usdcBorrowed} USDC</p>
               <p className="text-lg text-primary mb-8">borrowed</p>
             </CardContent>
           </Card>
         </div>
-        <div className="w-full max-w-4xl mt-8 sm:mt-24">
-        {depositAddress && depositAddress.length > 40 && address ? <p className="flex flex-wrap justify-center w-full max-w-4xl gap-2 items-center font-semibold">Deposit address → arb:{depositAddress}</p> : <div className="flex flex-wrap justify-center w-full max-w-4xl gap-2 items-center">
-          <Input type="text" placeholder="USDC off-ramp address" className="sm:max-w-[50%]" onChangeCapture={e => setAddressValue(e.currentTarget.value)}/>
-            <Button onClick={createDepositAddress} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Create deposit address →"}</Button>
-          </div>}
+        <div className="w-full max-w-4xl mt-8 sm:mt-24 justify-center flex">
+          <Button onClick={createDepositAddress} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Get started →"}</Button>
+        </div>
+        <div className="w-full max-w-4xl mt-8 sm:mt-24 justify-center flex gap-4">
+          <Input type="text" placeholder="Your full name" onChangeCapture={e => {setFullName(e.currentTarget.value)}} />
+          <Input type="text" placeholder="Your email" onChangeCapture={e => {setEmail(e.currentTarget.value)}} />
+          <Button onClick={() => {void createNewCustomer({fullName, email, type: "individual", privyAuthToken: privyAuthToken as string})}} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Create account →"}</Button>
         </div>
         <div className="flex flex-col justify-center items-center">
           <div className="flex justify-center w-full mt-16 mb-4 sm:mt-24 gap-4 sm:gap-12 flex-wrap">

@@ -43,8 +43,8 @@ export async function createOnrampTransfer({amount,privyAuthToken}: {amount: str
 }
         
 export function useGetCustomerInfo({privyAuthToken}: {privyAuthToken: string}) {
-    const { data, error, isLoading } = useSWR(
-        `https://sqvnnfjhgahnruj4adg5daxd3a0msibc.lambda-url.eu-west-1.on.aws/`,
+    const { data, error, isLoading } = useSWR(privyAuthToken ? 
+        `https://sqvnnfjhgahnruj4adg5daxd3a0msibc.lambda-url.eu-west-1.on.aws/` : null,
         () => fetcher(`https://sqvnnfjhgahnruj4adg5daxd3a0msibc.lambda-url.eu-west-1.on.aws/`, 
         {
             method: 'GET',

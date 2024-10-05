@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Loader2 } from "lucide-react";
 
 countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
 
@@ -42,35 +43,37 @@ export default function Home() {
   const [stage, setStage] = useState<Stage>("getStarted");
   const { address } = useAccount();
   const { login, logout, user, getAccessToken } = usePrivy();
-  const { data: userReservesData, refetch: refetchUserReservesData } = useReadAaveUiPoolDataProviderGetUserReservesData({
-    args: ["0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb",
-      depositAddress as `0x${string}`],
-  });
-  const { data: reservesData, refetch: refetchReservesData } = useReadAaveUiPoolDataProviderGetReservesData({
-    args: ["0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb"]
-  });
-  const { data: erc20Data, refetch: refetchErc20Data } = useReadErc20BalanceOf({
-    address: "0xf611aEb5013fD2c0511c9CD55c7dc5C1140741A6",
-    args: [depositAddress as `0x${string}`],
-  });
   const { data: customerInfoData, isLoading: customerInfoIsLoading, error: customerInfoError } = useGetCustomerInfo({
     privyAuthToken: privyAuthToken as string,
   });
+  const { data: userReservesData, refetch: refetchUserReservesData, error: userReservesError } = useReadAaveUiPoolDataProviderGetUserReservesData({
+    args: ["0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D",
+      customerInfoData?.fluidLoanSafe as `0x${string}`],
+  });
+  const { data: reservesData, refetch: refetchReservesData, error: reservesError } = useReadAaveUiPoolDataProviderGetReservesData({
+    args: ["0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D"]
+  });
+  const { data: erc20Data, refetch: refetchErc20Data } = useReadErc20BalanceOf({
+    address: "0x59dca05b6c26dbd64b5381374aAaC5CD05644C28",
+    args: [customerInfoData?.fluidLoanSafe as `0x${string}`],
+  });
 
-  console.log(customerInfoData)
+  console.log(userReservesError, reservesError, userReservesData, reservesData)
 
   useEffect(() => {
-    if (customerInfoData != null) {
-      if (Object.keys(customerInfoData).length === 0 && user != null) {
+    if (customerInfoData != null && user != null) {
+      if (Object.keys(customerInfoData).length === 0) {
         setStage("userInfo")
       } else if (customerInfoData?.tosStatus === "pending") {
         setStage("tos");
-      } else if (customerInfoData?.kycStatus === "not_started") {
+      } else if (customerInfoData?.kycStatus === "not_started" || customerInfoData?.kycStatus === "incomplete") {
         setStage("kyc");
       } else if (customerInfoData?.kycStatus === "approved") {
-        setStage("approved");
-      } else {
-        setStage("pending")
+        if (customerInfoData?.fluidLoanSafe != null) {
+          setStage("approved");
+        } else {
+          setStage("pending");
+        }
       }
     } else {
       setStage("getStarted")
@@ -104,13 +107,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const safeAddress = localStorage.getItem("safeAddress");
-    if (safeAddress) {
-      setDepositAddress(safeAddress);
-    }
-  }, []);
-
   const formatter = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 8,
@@ -119,8 +115,8 @@ export default function Home() {
   useEffect(() => {
     if (userReservesData && reservesData) {
       console.log(userReservesData);
-      const unformattedEthCollateral = userReservesData[0].find(balance => balance.underlyingAsset === "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1")?.scaledATokenBalance ?? BigInt(0);
-      const ethLiquidityIndex = reservesData[0].find(reserve => reserve.underlyingAsset === "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1")?.liquidityIndex ?? BigInt(0);
+      const unformattedEthCollateral = userReservesData[0].find(balance => balance.underlyingAsset === "0x4200000000000000000000000000000000000006")?.scaledATokenBalance ?? BigInt(0);
+      const ethLiquidityIndex = reservesData[0].find(reserve => reserve.underlyingAsset === "0x4200000000000000000000000000000000000006")?.liquidityIndex ?? BigInt(0);
       const finalEthCollateral = unformattedEthCollateral * ethLiquidityIndex;
       const formattedEthCollateral = formatUnits(finalEthCollateral, 45);
       const finalFormattedEthCollateral = formatter.format(Number(formattedEthCollateral));
@@ -130,22 +126,6 @@ export default function Home() {
       setUsdcBorrowed(finalFormattedUsdcBorrowed);
     }
   }, [userReservesData, reservesData]);
-
-  const createDepositAddress = async () => {
-    setLoading(true);
-    axios.post("https://3ebks672jrgcw36vt4hvnyurvm0oyfuv.lambda-url.eu-west-1.on.aws/", {
-      "userAddress": address,
-      "offrampAddress": addressValue,
-    }).then((response) => {
-      const parsedResponse = JSON.parse(response.data.body);
-      localStorage.setItem("safeAddress", parsedResponse.safeAddress);
-      setDepositAddress(parsedResponse.safeAddress);
-      setLoading(false);
-    }).catch((error) => {
-      console.error(error);
-      setLoading(false);
-    });
-  }
 
   useEffect(() => {
     if (user?.farcaster?.username != null) {
@@ -160,12 +140,20 @@ export default function Home() {
     }
   }, [user])
 
+  async function handleCreateNewCustomer() {
+    setLoading(true);
+    await createNewCustomer({firstName, lastName, email, type: "individual", bankName, iban, bic, country, privyAuthToken: privyAuthToken as string})
+    setLoading(false);
+  }
+
+  console.log(stage)
+
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-4 sm:px-16">
       <div className="flex justify-between items-center w-full px-8 max-w-4xl">
         <h1 className={`text-2xl font-semibold ${raleway.className}`}>fluid.loan</h1>
         <div className="flex gap-6 items-center">
-          <p>{username.length > 15 ? `${username.slice(0, 5)}...${username.slice(-5)}` : username}</p>
+          <p>{username.length > 15 ? `${username.slice(0, 15)}...` : username}</p>
           <Button variant={user == null ? "default" : "outline"} className={user == null ? "bg-[#4D8A8F] hover:bg-[#84B9BD]" : ""} size="sm" onClick={() => {
             if (user) {
               logout(); 
@@ -180,18 +168,14 @@ export default function Home() {
         <div className="flex justify-center flex-wrap w-full mt-8 sm:mt-24 gap-4">
           <Card className="sm:min-w-[40%] sm:w-[40%] min-w-[70%] relative flex flex-col justify-between">
             <CardHeader>
-              <CardTitle className="text-4xl text-primary">💎 Hold ETH & BTC</CardTitle>
+              <CardTitle className="text-4xl text-primary">💎 Hold ETH</CardTitle>
               <CardDescription>
-                Keep the ETH & BTC upside and optimize taxable events.
+                Keep the ETH upside and optimize taxable events.
               </CardDescription>
             </CardHeader>
             <CardContent className="w-full flex flex-row justify-center gap-16 items-center mt-5">
               <div className="flex flex-col items-center">
                 <p className="text-2xl sm:text-4xl text-primary">{ethCollateral} ETH</p>
-                <p className="text-lg text-primary mb-8">deposited</p>
-              </div>
-              <div className="flex flex-col items-center">
-                <p className="text-2xl sm:text-4xl text-primary">{ethCollateral} cbBTC</p>
                 <p className="text-lg text-primary mb-8">deposited</p>
               </div>
             </CardContent>
@@ -231,7 +215,7 @@ export default function Home() {
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={() => {void createNewCustomer({firstName, lastName, email, type: "individual", bankName, iban, bic, country, privyAuthToken: privyAuthToken as string})}} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Create account →"}</Button>
+          <Button onClick={() => {void handleCreateNewCustomer()}} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Create account →"}</Button>
         </div> 
         : null}
         {stage === "tos" ?
@@ -252,18 +236,21 @@ export default function Home() {
         {stage === "kyc" ?
           <iframe
             allow="camera;"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation-by-user-activation"
-          src='blank'
-          title="Bridge KYC"
-          width="100%"
-          height="600px"
-          style={{
-            border: 'none',
-            borderRadius: '10px',
-            overflow: 'hidden',
-            }}
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation-by-user-activation"
+            src={customerInfoData?.kycLinks?.kyc.replace('verify', 'widget') +
+              `&iframe-origin=${encodeURIComponent(window.location.origin)}`}
+            title="Bridge KYC"
+            width="100%"
+            height="700px"
+            style={{
+              border: 'none',
+              borderRadius: '10px',
+              overflow: 'hidden',
+              }}
           />
         : null}
+        {customerInfoData != null && customerInfoData?.fluidLoanSafe != null ? <div className="w-full max-w-4xl mt-8 sm:mt-24"><p className="flex flex-wrap justify-center w-full max-w-4xl gap-2 items-center font-semibold">Deposit address → base:{customerInfoData?.fluidLoanSafe}</p></div> : null}
+        {stage === "pending" ? <div className="w-full max-w-4xl mt-8 sm:mt-24"><p className="flex flex-wrap justify-center w-full max-w-4xl gap-2 items-center font-semibold">Getting your deposit address ready...</p></div> : null}
         <div className="flex flex-col justify-center items-center">
           <div className="flex justify-center w-full mt-16 mb-4 sm:mt-24 gap-4 sm:gap-12 flex-wrap">
             <p className="text-2xl">✅ Zero clicks</p>

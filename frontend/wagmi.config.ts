@@ -1,5 +1,5 @@
 import { defineConfig } from '@wagmi/cli'
-import { arbitrum } from 'viem/chains'
+import { base } from 'viem/chains'
 import { etherscan, react } from "@wagmi/cli/plugins";
 import { erc20Abi } from 'viem';
 
@@ -14,19 +14,19 @@ export default defineConfig({
   plugins: [
     react(),
     etherscan({
-      apiKey: "BIMA483JJPZ43MWYPK9Y95HSTICGFJP73R",
-      chainId: arbitrum.id,
+      apiKey: "YBMY8Z9SAM77NUINWEMNCD13K1QTS24Y3R",
+      chainId: base.id,
       contracts: [
         {
           name: "aavePool",
           address: {
-            [arbitrum.id]: "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+            [base.id]: "0x43955b0899Ab7232E3a454cf84AedD22Ad46FD33",
           },
         },
         {
           name: "aaveUiPoolDataProvider",
           address: {
-            [arbitrum.id]: "0x145dE30c929a065582da84Cf96F88460dB9745A7",
+            [base.id]: "0x5d4D4007A4c6336550DdAa2a7c0d5e7972eebd16",
           },
         },
       ],

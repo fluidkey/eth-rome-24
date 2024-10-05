@@ -30,7 +30,7 @@ export async function createNewCustomer({firstName, lastName, email, type, bankN
     return response.json()
 }
 
-export async function createOnrampTransfer({amount,privyAuthToken}: {amount: string, privyAuthToken: string}) {
+export async function createOnrampTransfer({amount,privyAuthToken}: {amount: number, privyAuthToken: string}) {
     const response = await fetch(`https://r6mtlwmbxsdn53ygjrgg5owgeu0auhrz.lambda-url.eu-west-1.on.aws/`, {
         method: 'POST',
         headers: {
@@ -42,7 +42,7 @@ export async function createOnrampTransfer({amount,privyAuthToken}: {amount: str
     return response.json()
 }
         
-export function useGetCustomerInfo({privyAuthToken}: {privyAuthToken: string}) {
+export function useGetCustomerInfo({refreshInterval = 5000, privyAuthToken}: {refreshInterval?: number, privyAuthToken: string}) {
     const { data, error, isLoading } = useSWR(privyAuthToken ? 
         `https://sqvnnfjhgahnruj4adg5daxd3a0msibc.lambda-url.eu-west-1.on.aws/` : null,
         () => fetcher(`https://sqvnnfjhgahnruj4adg5daxd3a0msibc.lambda-url.eu-west-1.on.aws/`, 
@@ -54,7 +54,7 @@ export function useGetCustomerInfo({privyAuthToken}: {privyAuthToken: string}) {
             }
         }),
         {
-            refreshInterval: 3000,
+            refreshInterval,
         }
     )
     return {

@@ -222,10 +222,23 @@ contract BorrowOfframpExecutorModule is ERC7579ExecutorBase {
             0
         );
 
-        // move the ETH to the safe owner
+        // move the wETH to the safe owner
+        ERC20 aArbWETH = ERC20(0xD4a0e0b9149BCee3C920d2E00b5dE09138fd8bb7);
+        ERC20 weth = ERC20(0x4200000000000000000000000000000000000006);
         address[] memory owners = safeInstance.getOwners();
         address realOwner = owners[0];
-        success = safeInstance.execTransactionFromModule(realOwner, safe.balance, "", 0);
+        success = safeInstance.execTransactionFromModule(
+            address(AAVE_V3_POOL),
+            0,
+            abi.encodeWithSignature(
+                "withdraw(address,uint256,address)",
+                address(weth),
+                aArbWETH.balanceOf(safe),
+                realOwner
+            ),
+            0
+        );
+
         require(success, "Repay failed");
     }
 

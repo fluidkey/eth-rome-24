@@ -11,6 +11,7 @@
   "dependencies": {
     "@privy-io/react-auth": "^1.88.3",
     "@privy-io/wagmi": "^0.2.12",
+    "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-slot": "^1.1.0",
     "@rainbow-me/rainbowkit": "^2.1.3",

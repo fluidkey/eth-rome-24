@@ -1,7 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
-import axios from "axios";
 import { useReadAaveUiPoolDataProviderGetReservesData, useReadAaveUiPoolDataProviderGetUserReservesData, useReadErc20BalanceOf } from "@/generated";
 import { formatUnits } from "viem";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Raleway } from "next/font/google";
 import { usePrivy } from "@privy-io/react-auth";
-import { useGetCustomerInfo, createNewCustomer } from "@/lib/api";
+import { useGetCustomerInfo, createNewCustomer, createOnrampTransfer } from "@/lib/api";
 const raleway = Raleway({ subsets: ["latin"] });
 import countries from "i18n-iso-countries";
 import {
@@ -19,7 +18,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Loader2 } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
 
@@ -28,8 +41,6 @@ type Stage = "getStarted" | "userInfo" | "tos" | "kyc" | "pending" | "approved"
 export default function Home() {
   const [ethCollateral, setEthCollateral] = useState<string>();
   const [usdcBorrowed, setUsdcBorrowed] = useState<string>();
-  const [depositAddress, setDepositAddress] = useState<string>();
-  const [addressValue, setAddressValue] = useState<string | null>();
   const [firstName, setFirstName] = useState<string>('');
   const [lastName, setLastName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
@@ -41,10 +52,11 @@ export default function Home() {
   const [username, setUsername] = useState<string>('')
   const [privyAuthToken, setPrivyAuthToken] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>("getStarted");
-  const { address } = useAccount();
+  const [instructions, setInstructions] = useState<any>();
   const { login, logout, user, getAccessToken } = usePrivy();
   const { data: customerInfoData, isLoading: customerInfoIsLoading, error: customerInfoError } = useGetCustomerInfo({
     privyAuthToken: privyAuthToken as string,
+    refreshInterval: stage === "approved" ? 0 : 5000
   });
   const { data: userReservesData, refetch: refetchUserReservesData, error: userReservesError } = useReadAaveUiPoolDataProviderGetUserReservesData({
     args: ["0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D",
@@ -146,6 +158,12 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function handleCreateOnrampTransfer() {
+    const instructions = await createOnrampTransfer({amount: parseFloat(usdcBorrowed as string), privyAuthToken: privyAuthToken as string})
+    setInstructions(instructions)
+    console.log(instructions)
+  }
+
   console.log(stage)
 
   return (
@@ -165,7 +183,7 @@ export default function Home() {
       </div>
       <div className="flex flex-col justify-between items-center">
       {(stage === "getStarted" || stage === "approved") ?
-        <div className="flex justify-center flex-wrap w-full mt-8 sm:mt-24 gap-4">
+        <div className="flex justify-center flex-wrap w-full mt-8 sm:mt-16 gap-4">
           <Card className="sm:min-w-[40%] sm:w-[40%] min-w-[70%] relative flex flex-col justify-between">
             <CardHeader>
               <CardTitle className="text-4xl text-primary">💎 Hold ETH</CardTitle>
@@ -249,7 +267,61 @@ export default function Home() {
               }}
           />
         : null}
-        {customerInfoData != null && customerInfoData?.fluidLoanSafe != null ? <div className="w-full max-w-4xl mt-8 sm:mt-24"><p className="flex flex-wrap justify-center w-full max-w-4xl gap-2 items-center font-semibold">Deposit address → base:{customerInfoData?.fluidLoanSafe}</p></div> : null}
+        {customerInfoData != null && customerInfoData?.fluidLoanSafe != null ? 
+          <div className="w-full max-w-2xl mt-8 sm:mt-16 items-center flex flex-col">
+            <p className="flex flex-wrap justify-center w-full max-w-4xl gap-2 items-center font-light text-muted-foreground text-lg">Deposit address</p>
+            <p className="font-semibold text-primary ml-4 text-lg mt-1">base:{customerInfoData?.fluidLoanSafe}</p>
+            {usdcBorrowed != null && parseFloat(usdcBorrowed) > 0 ? 
+                <Accordion type="single" className="w-full mt-2 max-w-sm text-muted-foreground font-light" collapsible onValueChange={(value) => {
+                  if (value) {
+                    void handleCreateOnrampTransfer()
+                  }
+                }}>
+                <AccordionItem value="item-1">
+                  <AccordionTrigger className="text-muted-foreground font-light">Repayment instructions</AccordionTrigger>
+                  <AccordionContent>
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">Amount</TableCell>
+                          <TableCell className="text-right">{instructions?.source_deposit_instructions?.amount}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Currency</TableCell>
+                          <TableCell className="text-right">EUR</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Reference</TableCell>
+                          <TableCell className="text-right">{instructions?.source_deposit_instructions?.deposit_message}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Account Holder Name</TableCell>
+                          <TableCell className="text-right">{instructions?.source_deposit_instructions?.account_holder_name}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">IBAN</TableCell>
+                          <TableCell className="text-right">{instructions?.source_deposit_instructions?.iban}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">BIC (SWIFT code)</TableCell>
+                          <TableCell className="text-right">{instructions?.source_deposit_instructions?.bic}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Bank Name</TableCell>
+                          <TableCell className="text-right">{instructions?.source_deposit_instructions?.bank_name}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="font-medium">Bank Address</TableCell>
+                          <TableCell className="text-right">{instructions?.source_deposit_instructions?.bank_address}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            : null}
+          </div> 
+        : null}
         {stage === "pending" ? <div className="w-full max-w-4xl mt-8 sm:mt-24"><p className="flex flex-wrap justify-center w-full max-w-4xl gap-2 items-center font-semibold">Getting your deposit address ready...</p></div> : null}
         <div className="flex flex-col justify-center items-center">
           <div className="flex justify-center w-full mt-16 mb-4 sm:mt-24 gap-4 sm:gap-12 flex-wrap">

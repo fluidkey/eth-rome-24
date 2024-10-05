@@ -11,17 +11,35 @@ import { Raleway } from "next/font/google";
 import { usePrivy } from "@privy-io/react-auth";
 import { useGetCustomerInfo, createNewCustomer } from "@/lib/api";
 const raleway = Raleway({ subsets: ["latin"] });
+import countries from "i18n-iso-countries";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
+
+type Stage = "getStarted" | "userInfo" | "tos" | "kyc" | "pending" | "approved"
 
 export default function Home() {
   const [ethCollateral, setEthCollateral] = useState<string>();
   const [usdcBorrowed, setUsdcBorrowed] = useState<string>();
   const [depositAddress, setDepositAddress] = useState<string>();
   const [addressValue, setAddressValue] = useState<string | null>();
-  const [fullName, setFullName] = useState<string>('');
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
+  const [bankName, setBankName] = useState<string>('');
+  const [iban, setIban] = useState<string>('');
+  const [bic, setBic] = useState<string>('');
+  const [country, setCountry] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [username, setUsername] = useState<string>('')
   const [privyAuthToken, setPrivyAuthToken] = useState<string | null>(null);
+  const [stage, setStage] = useState<Stage>("getStarted");
   const { address } = useAccount();
   const { login, logout, user, getAccessToken } = usePrivy();
   const { data: userReservesData, refetch: refetchUserReservesData } = useReadAaveUiPoolDataProviderGetUserReservesData({
@@ -39,11 +57,39 @@ export default function Home() {
     privyAuthToken: privyAuthToken as string,
   });
 
+  console.log(customerInfoData)
+
+  useEffect(() => {
+    if (customerInfoData != null) {
+      if (Object.keys(customerInfoData).length === 0 && user != null) {
+        setStage("userInfo")
+      } else if (customerInfoData?.tosStatus === "pending") {
+        setStage("tos");
+      } else if (customerInfoData?.kycStatus === "not_started") {
+        setStage("kyc");
+      } else if (customerInfoData?.kycStatus === "approved") {
+        setStage("approved");
+      } else {
+        setStage("pending")
+      }
+    } else {
+      setStage("getStarted")
+    }
+  }, [customerInfoData]);
+
+  const countryObj = countries.getNames('en', { select: 'official' });
+  const alpha3Codes = countries.getAlpha2Codes();
+  const options = Object.keys(countryObj).map(alpha2Code => ({
+    value: alpha3Codes[alpha2Code],
+    label: countryObj[alpha2Code]
+  }));
+
   const getToken = async () => {
     const token = await getAccessToken();
     setPrivyAuthToken(token);
   }
 
+  console.log(user)
   useEffect(() => {
     getToken();
   }, [user])
@@ -106,6 +152,7 @@ export default function Home() {
       setUsername(user?.farcaster?.username)
     } else if (user?.email?.address != null) {
       setUsername(user?.email?.address)
+      setEmail(user?.email?.address)
     } else if (user?.wallet?.address != null) {
       setUsername(user?.wallet?.address)
     } else if (user == null) {
@@ -120,16 +167,16 @@ export default function Home() {
         <div className="flex gap-6 items-center">
           <p>{username.length > 15 ? `${username.slice(0, 5)}...${username.slice(-5)}` : username}</p>
           <Button variant={user == null ? "default" : "outline"} className={user == null ? "bg-[#4D8A8F] hover:bg-[#84B9BD]" : ""} size="sm" onClick={() => {
-            console.log(user)
             if (user) {
               logout(); 
             } else {
               login(); 
             }
-          }}>{user != null ? 'Log out' : 'Log in'}</Button>
+          }}>{user != null ? 'Log out' : 'Get started →'}</Button>
         </div>
       </div>
       <div className="flex flex-col justify-between items-center">
+      {(stage === "getStarted" || stage === "approved") ?
         <div className="flex justify-center flex-wrap w-full mt-8 sm:mt-24 gap-4">
           <Card className="sm:min-w-[40%] sm:w-[40%] min-w-[70%] relative flex flex-col justify-between">
             <CardHeader>
@@ -163,14 +210,60 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
-        <div className="w-full max-w-4xl mt-8 sm:mt-24 justify-center flex">
-          <Button onClick={createDepositAddress} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Get started →"}</Button>
+        : null}
+        {stage === "userInfo" ?
+        <div className="w-full max-w-lg mt-8 sm:mt-24 justify-center flex flex-col gap-4">
+          <Input type="text" placeholder="First name" onChangeCapture={e => {setFirstName(e.currentTarget.value)}} />
+          <Input type="text" placeholder="Last name" onChangeCapture={e => {setLastName(e.currentTarget.value)}} />
+          {user?.email?.address != null ? null : <Input type="text" placeholder="Your email" onChangeCapture={e => {setEmail(e.currentTarget.value)}} />}
+          <Input type="text" placeholder="Bank name" onChangeCapture={e => {setBankName(e.currentTarget.value)}} />
+          <Input type="text" placeholder="IBAN" onChangeCapture={e => {setIban(e.currentTarget.value)}} />
+          <Input type="text" placeholder="BIC (SWIFT code)" onChangeCapture={e => {setBic(e.currentTarget.value)}} />
+          <Select onValueChange={(value) => setCountry(value)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Country" />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={() => {void createNewCustomer({firstName, lastName, email, type: "individual", bankName, iban, bic, country, privyAuthToken: privyAuthToken as string})}} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Create account →"}</Button>
+        </div> 
+        : null}
+        {stage === "tos" ?
+        <div className="w-full max-w-lg mt-8 sm:mt-24 justify-center flex flex-col gap-4">
+          <iframe
+            src={customerInfoData?.kycLinks?.tos}
+            title="Bridge Terms of Service"
+            width="100%"
+            height="400px"
+            style={{
+              border: 'none',
+              borderRadius: '10px',
+              overflow: 'hidden',
+            }}
+          />
         </div>
-        <div className="w-full max-w-4xl mt-8 sm:mt-24 justify-center flex gap-4">
-          <Input type="text" placeholder="Your full name" onChangeCapture={e => {setFullName(e.currentTarget.value)}} />
-          <Input type="text" placeholder="Your email" onChangeCapture={e => {setEmail(e.currentTarget.value)}} />
-          <Button onClick={() => {void createNewCustomer({fullName, email, type: "individual", privyAuthToken: privyAuthToken as string})}} className="bg-[#4D8A8F] hover:bg-[#84B9BD]" disabled={loading}>{loading ? "Loading..." : "Create account →"}</Button>
-        </div>
+        : null}
+        {stage === "kyc" ?
+          <iframe
+            allow="camera;"
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation-by-user-activation"
+          src='blank'
+          title="Bridge KYC"
+          width="100%"
+          height="600px"
+          style={{
+            border: 'none',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            }}
+          />
+        : null}
         <div className="flex flex-col justify-center items-center">
           <div className="flex justify-center w-full mt-16 mb-4 sm:mt-24 gap-4 sm:gap-12 flex-wrap">
             <p className="text-2xl">✅ Zero clicks</p>

@@ -219,7 +219,7 @@ export default function Home() {
           <Input type="text" placeholder="Last name" onChangeCapture={e => {setLastName(e.currentTarget.value)}} />
           {user?.email?.address != null ? null : <Input type="text" placeholder="Your email" onChangeCapture={e => {setEmail(e.currentTarget.value)}} />}
           <Input type="text" placeholder="Bank name" onChangeCapture={e => {setBankName(e.currentTarget.value)}} />
-          <Input type="text" placeholder="IBAN" onChangeCapture={e => {setIban(e.currentTarget.value)}} />
+          <Input type="password" placeholder="IBAN" onChangeCapture={e => {setIban(e.currentTarget.value)}} />
           <Input type="text" placeholder="BIC (SWIFT code)" onChangeCapture={e => {setBic(e.currentTarget.value)}} />
           <Select onValueChange={(value) => setCountry(value)}>
             <SelectTrigger>

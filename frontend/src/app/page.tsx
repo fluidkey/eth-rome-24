@@ -17,8 +17,9 @@ export default function Home() {
   const [depositAddress, setDepositAddress] = useState<string>();
   const [addressValue, setAddressValue] = useState<string | null>();
   const [loading, setLoading] = useState<boolean>(false);
+  const [username, setUsername] = useState<string>('')
   const { address } = useAccount();
-  const { login, logout } = usePrivy();
+  const { login, logout, user } = usePrivy();
   console.log(address);
   const { data: userReservesData, refetch: refetchUserReservesData } = useReadAaveUiPoolDataProviderGetUserReservesData({
     args: ["0xa97684ead0e402dC232d5A977953DF7ECBaB3CDb",
@@ -84,19 +85,32 @@ export default function Home() {
     });
   }
 
+  useEffect(() => {
+    if (user?.farcaster?.username != null) {
+      setUsername(user?.farcaster?.username)
+    } else if (user?.email?.address != null) {
+      setUsername(user?.email?.address)
+    } else if (user?.wallet?.address != null) {
+      setUsername(user?.wallet?.address)
+    } else if (user == null) {
+      setUsername("")
+    }
+  }, [user])
+
   return (
     <main className="flex min-h-screen flex-col items-center px-4 py-4 sm:px-16">
       <div className="flex justify-between items-center w-full px-8 max-w-4xl">
         <h1 className={`text-2xl font-semibold ${raleway.className}`}>fluid.loan</h1>
-        <div className="flex gap-2">
-          <Button onClick={() => {
-            console.log("login");
-            login();
-          }}>Login</Button>
-          <Button onClick={() => {
-            console.log("logout",address);
-            logout();
-          }}>Logout</Button>
+        <div className="flex gap-6 items-center">
+          <p>{username.length > 15 ? `${username.slice(0, 5)}...${username.slice(-5)}` : username}</p>
+          <Button variant={user == null ? "default" : "outline"} className={user == null ? "bg-[#4D8A8F] hover:bg-[#84B9BD]" : ""} size="sm" onClick={() => {
+            console.log(user)
+            if (user) {
+              logout(); 
+            } else {
+              login(); 
+            }
+          }}>{user != null ? 'Log out' : 'Log in'}</Button>
         </div>
       </div>
       <div className="flex flex-col justify-between items-center">

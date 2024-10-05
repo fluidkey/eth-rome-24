@@ -16,7 +16,7 @@ export function PrivyWagmiProvider({children}: {children: React.ReactNode}) {
         embeddedWallets: { 
           createOnLogin: 'users-without-wallets'
         },
-        loginMethods: ['farcaster', 'google', 'email', 'wallet']  
+        loginMethods: ['farcaster', 'email', 'wallet']  
       }}
     >
       <QueryClientProvider client={queryClient}>

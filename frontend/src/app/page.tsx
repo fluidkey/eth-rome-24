@@ -60,14 +60,14 @@ export default function Home() {
   });
   const { data: userReservesData, refetch: refetchUserReservesData, error: userReservesError } = useReadAaveUiPoolDataProviderGetUserReservesData({
     args: ["0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D",
-      customerInfoData?.fluidLoanSafe as `0x${string}`],
+      customerInfoData?.fluidLoanSafe ?? '0x78262B0C7f879be5F97a1138EFE1F60df3bd7d20'],
   });
   const { data: reservesData, refetch: refetchReservesData, error: reservesError } = useReadAaveUiPoolDataProviderGetReservesData({
     args: ["0xe20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D"]
   });
   const { data: erc20Data, refetch: refetchErc20Data } = useReadErc20BalanceOf({
     address: "0x59dca05b6c26dbd64b5381374aAaC5CD05644C28",
-    args: [customerInfoData?.fluidLoanSafe as `0x${string}`],
+    args: [customerInfoData?.fluidLoanSafe ?? '0x78262B0C7f879be5F97a1138EFE1F60df3bd7d20'],
   });
 
   console.log(userReservesError, reservesError, userReservesData, reservesData)

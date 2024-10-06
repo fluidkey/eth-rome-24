@@ -184,7 +184,9 @@ export default function Home() {
       <div className="flex flex-col justify-between items-center">
       {(stage === "getStarted" || stage === "approved") ?
         <div className="flex justify-center flex-wrap w-full mt-8 sm:mt-16 gap-4">
-          <Card className="sm:min-w-[40%] sm:w-[40%] min-w-[70%] relative flex flex-col justify-between">
+          <Card className="sm:min-w-[40%] sm:w-[40%] min-w-[70%] relative flex flex-col justify-between" onClick={() => { refetchUserReservesData() 
+            refetchReservesData() 
+            refetchErc20Data() }}>
             <CardHeader>
               <CardTitle className="text-4xl text-primary">💎 Hold ETH</CardTitle>
               <CardDescription>
@@ -331,6 +333,11 @@ export default function Home() {
           <p className="max-w-2xl mt-2 text-muted-foreground">The fluid.loan module automatically borrows USDC on your behalf when ETH is deposited and automatically repays your loan when USDC is sent. The deposit address is a self-custodial Safe smart account controlled by the account connected to this page.</p>
         </div>
       </div>
+      <Button className="mt-[1000px]" onClick={() => {
+        refetchUserReservesData()
+        refetchReservesData()
+        refetchErc20Data()
+      }}>Refresh</Button>
     </main>
   );
 }
